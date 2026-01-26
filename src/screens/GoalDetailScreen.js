@@ -120,7 +120,9 @@ const GoalDetailScreen = ({ route, navigation }) => {
         <View style={styles.sectionHeader}>
            <Text style={styles.sectionTitle}>Active Phase</Text>
            <View style={[styles.weekBadge, { backgroundColor: currentTheme.primary + '15' }]}>
-              <Text style={[styles.weekText, { color: currentTheme.primary }]}>Week {currentPhase?.weeks[0] || 1}-{currentPhase?.weeks[1] || '?'}</Text>
+              <Text style={[styles.weekText, { color: currentTheme.primary }]}>
+                Week {currentPhase?.weeks?.[0] || '1'} - {currentPhase?.weeks?.[1] || '?'}
+              </Text>
            </View>
         </View>
 
@@ -235,7 +237,9 @@ const GoalDetailScreen = ({ route, navigation }) => {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.modalPhaseTitle}>{p.phase}</Text>
-                        <Text style={[styles.modalPhaseMeta, { color: currentTheme.secondary }]}>Week {p.weeks[0]} - {p.weeks[1]}</Text>
+                        <Text style={[styles.modalPhaseMeta, { color: currentTheme.secondary }]}>
+                          Week {p.weeks?.[0] || '1'} - {p.weeks?.[1] || '?'}
+                        </Text>
                         <Text style={styles.modalPhaseFocus}>{p.focus}</Text>
                       </View>
                     </View>

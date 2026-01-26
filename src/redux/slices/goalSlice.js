@@ -252,10 +252,11 @@ const taskSlice = createSlice({
       })
       .addCase(createGoalWithAI.fulfilled, (state, action) => {
         state.isGenerating = false;
-        // The API returns { goal, tasks }
-        state.tasks = [...state.tasks, ...action.payload.tasks];
+        // Added defensive checks for spreads
+        const newTasks = action.payload?.tasks || [];
+        state.tasks = [...(state.tasks || []), ...newTasks];
         state.progress = calculateProgress(state.tasks);
-        state.goalsList = [action.payload.goal, ...state.goalsList];
+        state.goalsList = [action.payload?.goal, ...(state.goalsList || [])].filter(Boolean);
         saveStateToStorage(state);
       })
       .addCase(createGoalWithAI.rejected, (state) => {
