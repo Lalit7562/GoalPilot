@@ -1,4 +1,5 @@
 const express = require('express');
+console.log('--- MISSION START: GoalPilot Server is initializing ---');
 const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
@@ -41,6 +42,6 @@ app.get('/', (req, res) => {
   res.send('GoalPilot API is running...');
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server started on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`🚀 MISSION LIVE: Running on port ${PORT}`);
 });
