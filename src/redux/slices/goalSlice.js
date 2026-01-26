@@ -165,14 +165,15 @@ const taskSlice = createSlice({
     builder
       .addCase(loadState.fulfilled, (state, action) => {
         if (action.payload) {
-          state.tasks = action.payload.tasks;
-          state.mood = action.payload.mood;
-          state.progress = action.payload.progress;
+          state.tasks = action.payload.tasks || [];
+          state.mood = action.payload.mood || null;
+          state.progress = action.payload.progress || 0;
           state.goalsList = action.payload.goalsList || [];
           state.stats = action.payload.stats || initialState.stats;
           state.user = action.payload.user || null;
           state.token = action.payload.token || null;
           state.isAuthenticated = !!action.payload.token;
+          state.dashboardSummary = action.payload.dashboardSummary || null;
         }
       })
       .addCase(googleLogin.fulfilled, (state, action) => {

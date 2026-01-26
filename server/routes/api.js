@@ -24,7 +24,7 @@ router.post('/goals/generate', async (req, res) => {
     console.log("[API] Generation Params:", JSON.stringify(generationParams));
     
     // 1. Generate Plan via Gemini
-    const aiResponse = await generateGoalPlan(generationParams);
+    const aiResponse = await generateGoalPlan(generationParams) || {};
     console.log("[API] AI Response keys:", Object.keys(aiResponse));
     
     // 2. Save Goal
@@ -165,7 +165,10 @@ router.get('/tasks/today', async (req, res) => {
         const diff = Math.abs(today - start);
         const dayNum = Math.ceil(diff / (1000 * 60 * 60 * 24)) || 1;
         
-        const currentPhase = (goal.phases || []).find(p => dayNum/7 >= p.weeks[0] && dayNum/7 <= p.weeks[1])?.phase || "In Progress";
+        const currentPhase = (goal.phases || []).find(p => 
+          p.weeks && Array.isArray(p.weeks) && p.weeks.length >= 2 &&
+          dayNum/7 >= p.weeks[0] && dayNum/7 <= p.weeks[1]
+        )?.phase || "In Progress";
 
         console.log(`AI Coaching needed for Goal: ${goal.title}, Day: ${dayNum}`);
 
@@ -342,7 +345,10 @@ router.get('/analytics/summary', async (req, res) => {
     const todayStatus = todayTasks.length > 0 && todayTasks.every(t => t.status === 'completed') ? 'completed' : 'pending';
 
     // 5. Current Phase
-    const currentPhase = (activeGoal.phases || []).find(p => dayNum/7 >= p.weeks[0] && dayNum/7 <= p.weeks[1])?.phase || "Operational";
+    const currentPhase = (activeGoal.phases || []).find(p => 
+      p.weeks && Array.isArray(p.weeks) && p.weeks.length >= 2 && 
+      dayNum/7 >= p.weeks[0] && dayNum/7 <= p.weeks[1]
+    )?.phase || "Operational";
 
     // 6. Missed Days
     const tasksGroupedByDate = {};

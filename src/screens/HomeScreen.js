@@ -28,9 +28,13 @@ const HomeScreen = ({ navigation }) => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    dispatch(fetchTodayTasks(mood));
+    // Defensive check: only fetch if data is missing
+    const hasTasks = tasks && Array.isArray(tasks) && tasks.length > 0;
+    if (!hasTasks || !dashboardSummary) {
+      dispatch(fetchTodayTasks(mood));
+      dispatch(fetchDashboardSummary());
+    }
     dispatch(fetchStats());
-    dispatch(fetchDashboardSummary());
   }, [dispatch, mood]);
 
   const handleStatusUpdate = async (id, status) => {

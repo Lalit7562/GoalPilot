@@ -58,7 +58,10 @@ const GoalDetailScreen = ({ route, navigation }) => {
   const now = new Date();
   const dayNum = Math.ceil(Math.abs(now - startDate) / (1000 * 60 * 60 * 24)) || 1;
   const currentWeek = Math.ceil(dayNum / 7);
-  const currentPhase = currentGoal.phases?.find(p => currentWeek >= p.weeks[0] && currentWeek <= p.weeks[1]) || (currentGoal.phases ? currentGoal.phases[0] : null);
+  const currentPhase = currentGoal.phases?.find(p => 
+    p.weeks && Array.isArray(p.weeks) && p.weeks.length >= 2 &&
+    currentWeek >= p.weeks[0] && currentWeek <= p.weeks[1]
+  ) || (currentGoal.phases && currentGoal.phases.length > 0 ? currentGoal.phases[0] : null);
 
   return (
     <SafeAreaView style={styles.safeArea}>
