@@ -42,6 +42,6 @@ app.get('/', (req, res) => {
   res.send('GoalPilot API is running...');
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 MISSION LIVE: Running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 MISSION LIVE: Server binding to 0.0.0.0:${PORT}`);
 });
