@@ -4,7 +4,6 @@
         "builder": "NIXPACKS"
     },
     "deploy": {
-        "numReplicas": 1,
-        "sleepApplication": false
+        "startCommand": "cd server && npm install && node index.js"
     }
 }

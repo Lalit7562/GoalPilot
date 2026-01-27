@@ -21,19 +21,36 @@ const ProgressScreen = () => {
     dispatch(fetchStats());
   }, [dispatch]);
 
-  const [activeDay, setActiveDay] = React.useState(null);
-
+  const [activeCell, setActiveCell] = React.useState(null);
 
   const rank = getRankInfo(stats?.totalCompleted || 0);
   const progressToNext = Math.min((stats?.totalCompleted || 0) / rank.target, 1);
-  const maxTotal = Math.max(...(stats?.history?.map(h => h.total) || [1]), 1);
+
+  // Generate 28-day tactical grid data
+  const matrixData = React.useMemo(() => {
+    const historicalData = stats?.history || [];
+    // Ensure we have 28 slots, padding with empty days if needed
+    const paddedData = [...Array(28)].map((_, i) => {
+      const dataIndex = historicalData.length - 1 - i;
+      return dataIndex >= 0 ? historicalData[dataIndex] : null;
+    }).reverse();
+    return paddedData;
+  }, [stats?.history]);
+
+  const milestones = [
+    { id: 1, name: 'Initiator', goal: 5, icon: 'trophy', achieved: (stats?.totalCompleted >= 5) },
+    { id: 2, name: 'Supercharged', goal: 10, icon: 'flash', achieved: (stats?.streak >= 3) },
+    { id: 3, name: 'Strategist', goal: 25, icon: 'map', achieved: (stats?.totalCompleted >= 25) },
+    { id: 4, name: 'Commander', goal: 50, icon: 'ribbon', achieved: (stats?.totalCompleted >= 50) },
+    { id: 5, name: 'Legend', goal: 100, icon: 'star', achieved: (stats?.totalCompleted >= 100) },
+  ];
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-         <Text style={styles.headerTitle}>Pilot Profile</Text>
+         <Text style={styles.headerTitle}>Pilot Command</Text>
          <TouchableOpacity style={styles.infoButton}>
-            <Ionicons name="settings-outline" size={24} color={theme.colors.text} />
+            <Ionicons name="analytics" size={24} color={theme.colors.primary} />
          </TouchableOpacity>
       </View>
 
@@ -45,11 +62,12 @@ const ProgressScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.secondary} />
         }
       >
+        {/* Elite Rank Module */}
         <View style={styles.rankCard}>
-           <LinearGradient colors={[theme.colors.primary, '#1E293B']} style={styles.rankBackground} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+           <LinearGradient colors={['#0F172A', '#1E293B']} style={styles.rankBackground} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
               <View style={styles.rankTop}>
                  <View>
-                    <Text style={styles.rankLabel}>CURRENT RANK</Text>
+                    <Text style={styles.rankLabel}>OPERATIONAL RANK</Text>
                     <Text style={styles.rankName}>{rank.name}</Text>
                  </View>
                  <View style={styles.rankIconContainer}>
@@ -59,12 +77,12 @@ const ProgressScreen = () => {
               
               <View style={styles.rankProgress}>
                  <View style={styles.rankProgressInfo}>
-                    <Text style={styles.rankNext}>Next: {rank.next}</Text>
-                    <Text style={styles.rankNext}>{stats?.totalCompleted || 0} / {rank.target}</Text>
+                    <Text style={styles.rankNext}>Level Progress</Text>
+                    <Text style={styles.rankNext}>{stats?.totalCompleted || 0} / {rank.target} Missions</Text>
                  </View>
                  <View style={styles.progressBarTrack}>
                     <LinearGradient 
-                      colors={['#F59E0B', '#FBBF24']} 
+                      colors={['#38BDF8', '#0EA5E9']} 
                       style={[styles.progressBarFill, { width: `${progressToNext * 100}%` }]} 
                       start={{ x: 0, y: 0 }} 
                       end={{ x: 1, y: 0 }} 
@@ -74,105 +92,117 @@ const ProgressScreen = () => {
            </LinearGradient>
         </View>
 
+        {/* Primary Stats Panel */}
         <View style={styles.topStats}>
            <View style={styles.statBox}>
+              <Ionicons name="flame" size={20} color="#F59E0B" style={{ marginBottom: 4 }} />
               <Text style={styles.statValue}>{stats?.streak || 0}</Text>
               <Text style={styles.statLabel}>Day Streak</Text>
            </View>
            <View style={styles.verticalDivider} />
            <View style={styles.statBox}>
+              <Ionicons name="checkmark-done-circle" size={20} color="#10B981" style={{ marginBottom: 4 }} />
               <Text style={styles.statValue}>{stats?.totalCompleted || 0}</Text>
-              <Text style={styles.statLabel}>Completed</Text>
+              <Text style={styles.statLabel}>Missions</Text>
            </View>
            <View style={styles.verticalDivider} />
            <View style={styles.statBox}>
+              <Ionicons name="speedometer" size={20} color="#38BDF8" style={{ marginBottom: 4 }} />
               <Text style={styles.statValue}>{Math.round(stats?.completionRate || 0)}%</Text>
               <Text style={styles.statLabel}>Success Rate</Text>
            </View>
         </View>
 
+        {/* Tactical Consistency Matrix */}
         <View style={styles.sectionHeader}>
            <Text style={styles.sectionTitle}>Consistency Matrix</Text>
-           <Text style={styles.sectionSubtitle}>Your last 7 days of activity</Text>
+           <Text style={styles.sectionSubtitle}>Last 28-day mission performance</Text>
         </View>
 
-        <View style={styles.chartCard}>
-          <View style={styles.chartArea}>
-            {stats?.history?.map((day, index) => {
-              const height = day.total > 0 ? (day.completed / maxTotal) * 120 : 0;
-              const totalHeight = (day.total / maxTotal) * 120;
-              const dayName = new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' });
-              const isToday = new Date(day.date).toDateString() === new Date().toDateString();
-              const dateKey = new Date(day.date).toISOString();
-
+        <View style={styles.matrixCard}>
+          <View style={styles.matrixHeader}>
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+              <Text key={i} style={styles.matrixDayLabel}>{day}</Text>
+            ))}
+          </View>
+          <View style={styles.gridContainer}>
+            {matrixData.map((day, index) => {
+              const intensity = day ? (day.total > 0 ? day.completed / day.total : 0) : 0;
+              const dateLabel = day ? new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No Data';
+              
               return (
                 <TouchableOpacity 
-                   key={index} 
-                   style={styles.barWrapper} 
-                   onPress={() => setActiveDay(activeDay === dateKey ? null : dateKey)}
-                   activeOpacity={0.7}
+                  key={index}
+                  onPress={() => setActiveCell(activeCell === index ? null : index)}
+                  style={[
+                    styles.gridCell,
+                    day && { 
+                      backgroundColor: intensity > 0.8 ? '#0EA5E9' : 
+                                     intensity > 0.5 ? '#38BDF8A0' : 
+                                     intensity > 0 ? '#38BDF840' : '#F1F5F9' 
+                    },
+                    activeCell === index && styles.activeCell
+                  ]}
                 >
-                  {activeDay === dateKey && (
-                     <View style={styles.tooltip}>
-                        <Text style={styles.tooltipText}>{day.completed}/{day.total}</Text>
-                     </View>
+                  {activeCell === index && (
+                    <View style={styles.gridTooltip}>
+                      <View style={styles.tooltipPointer} />
+                      <Text style={styles.tooltipDate}>{dateLabel}</Text>
+                      <Text style={styles.tooltipStats}>{day ? `${day.completed}/${day.total}` : '0/0'}</Text>
+                    </View>
                   )}
-                  <View style={styles.barTrack}>
-                    <View style={[styles.barTotal, { height: totalHeight }]} />
-                    <LinearGradient 
-                      colors={isToday ? [theme.colors.secondary, '#60A5FA'] : ['#94A3B8', '#64748B']} 
-                      style={[styles.barFill, { height: height }]} 
-                    />
-                  </View>
-                  <Text style={[styles.dayLabel, isToday && styles.todayLabel]}>{dayName}</Text>
                 </TouchableOpacity>
               );
             })}
           </View>
+          <View style={styles.gridLegend}>
+            <Text style={styles.legendLabel}>Dormant</Text>
+            <View style={[styles.legendBox, { backgroundColor: '#F1F5F9' }]} />
+            <View style={[styles.legendBox, { backgroundColor: '#38BDF840' }]} />
+            <View style={[styles.legendBox, { backgroundColor: '#38BDF8A0' }]} />
+            <View style={[styles.legendBox, { backgroundColor: '#0EA5E9' }]} />
+            <Text style={styles.legendLabel}>Peak</Text>
+          </View>
         </View>
 
-        <View style={styles.insightBanner}>
-           <View style={styles.insightIcon}>
-              <Ionicons name="bulb" size={20} color="#F59E0B" />
-           </View>
-           <View style={styles.insightContent}>
-              <Text style={styles.insightHeader}>CONSISTENCY TIP</Text>
-              <Text style={styles.insightText}>
-                {stats?.streak > 3 
-                  ? "Elite momentum detected! You're in the top 5% of consistent users. Keep the streak alive."
-                  : stats?.streak > 0 
-                  ? "Stabilizing focus... Aim for a 5-day streak to unlock advanced roadmap features."
-                  : "Every mission starts with day one. Complete your baseline task to initialize your streak."}
-              </Text>
-           </View>
+        {/* Dynamic Milestones Roadmap */}
+        <View style={styles.sectionHeader}>
+           <Text style={styles.sectionTitle}>Mission Milestones</Text>
+           <Text style={styles.sectionSubtitle}>Your progression towards legend status</Text>
         </View>
 
-        <Text style={styles.sectionTitle}>Mission Milestones</Text>
-        <View style={styles.milestoneGrid}>
-           <View style={[styles.milestoneCard, stats?.totalCompleted >= 5 && styles.activeMilestone]}>
-              <View style={styles.milestoneIcon}>
-                 <Ionicons name="trophy" size={24} color={stats?.totalCompleted >= 5 ? '#F59E0B' : '#94A3B8'} />
+        <View style={styles.roadmapContainer}>
+          {milestones.map((m, index) => (
+            <View key={m.id} style={styles.milestoneRow}>
+              <View style={styles.milestoneLeft}>
+                <View style={[
+                  styles.milestoneIconOuter,
+                  m.achieved && { backgroundColor: theme.colors.primary + '15', borderColor: theme.colors.primary }
+                ]}>
+                  <Ionicons 
+                    name={m.achieved ? m.icon : 'lock-closed'} 
+                    size={22} 
+                    color={m.achieved ? theme.colors.primary : '#94A3B8'} 
+                  />
+                </View>
+                {index < milestones.length - 1 && (
+                  <View style={[styles.roadmapLine, m.achieved && milestones[index+1].achieved && { backgroundColor: theme.colors.primary }]} />
+                )}
               </View>
-              <Text style={styles.milestoneName}>Initiator</Text>
-              <Text style={styles.milestoneGoal}>5 Tasks</Text>
-           </View>
-
-           <View style={[styles.milestoneCard, stats?.streak >= 3 && styles.activeMilestone]}>
-              <View style={styles.milestoneIcon}>
-                 <Ionicons name="flash" size={24} color={stats?.streak >= 3 ? '#F59E0B' : '#94A3B8'} />
+              <View style={styles.milestoneContent}>
+                <Text style={[styles.milestoneText, !m.achieved && { color: '#94A3B8' }]}>{m.name}</Text>
+                <Text style={styles.milestoneTarget}>{m.goal} {m.id === 2 ? 'Day Streak' : m.id === 3 ? 'AI Missions' : 'Tasks'}</Text>
               </View>
-              <Text style={styles.milestoneName}>Supercharged</Text>
-              <Text style={styles.milestoneGoal}>3 Day Streak</Text>
-           </View>
-
-           <View style={[styles.milestoneCard, stats?.totalCompleted >= 50 && styles.activeMilestone]}>
-              <View style={styles.milestoneIcon}>
-                 <Ionicons name="ribbon" size={24} color={stats?.totalCompleted >= 50 ? '#F59E0B' : '#94A3B8'} />
-              </View>
-              <Text style={styles.milestoneName}>Commander</Text>
-              <Text style={styles.milestoneGoal}>50 Tasks</Text>
-           </View>
+              {m.achieved && (
+                <View style={styles.achievedBadge}>
+                  <Ionicons name="checkmark" size={12} color="#FFF" />
+                </View>
+              )}
+            </View>
+          ))}
         </View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -184,120 +214,178 @@ const styles = StyleSheet.create({
      flexDirection: 'row',
      justifyContent: 'space-between',
      alignItems: 'center',
-     paddingHorizontal: 20,
+     paddingHorizontal: 25,
      paddingVertical: 15,
   },
-  headerTitle: { fontSize: 24, fontWeight: '900', color: theme.colors.text, letterSpacing: -1 },
+  headerTitle: { fontSize: 24, fontWeight: '950', color: theme.colors.text, letterSpacing: -1.2 },
   infoButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   container: { flex: 1 },
-  content: { padding: 20 },
+  content: { padding: 25 },
+  rankCard: {
+     marginBottom: 30,
+     borderRadius: 30,
+     overflow: 'hidden',
+     ...theme.shadows.deep,
+  },
+  rankBackground: { padding: 30 },
+  rankTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 25 },
+  rankLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: '800', letterSpacing: 1.5, marginBottom: 5 },
+  rankName: { color: theme.colors.white, fontSize: 36, fontWeight: '900', letterSpacing: -1.5 },
+  rankIconContainer: {
+     width: 64, height: 64, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)',
+     justifyContent: 'center', alignItems: 'center',
+     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)'
+  },
+  rankProgressInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  rankNext: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '700' },
+  progressBarTrack: { height: 10, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 5, overflow: 'hidden' },
+  progressBarFill: { height: '100%', borderRadius: 5 },
   topStats: { 
      flexDirection: 'row', 
      justifyContent: 'space-around', 
-     marginBottom: 30,
+     marginBottom: 35,
      backgroundColor: theme.colors.white,
-     paddingVertical: 20,
-     borderRadius: 20,
-     borderWidth: 1,
-     borderColor: theme.colors.border,
+     paddingVertical: 25,
+     borderRadius: 25,
+     borderWidth: 1.5,
+     borderColor: 'rgba(15, 23, 42, 0.05)',
      ...theme.shadows.soft,
   },
   statBox: { alignItems: 'center', flex: 1 },
-  verticalDivider: { width: 1, height: '80%', backgroundColor: theme.colors.border },
-  statValue: { fontSize: 24, fontWeight: '900', color: theme.colors.text },
-  statLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary, marginTop: 4 },
-  rankCard: {
-     marginBottom: 25,
-     borderRadius: 24,
-     overflow: 'hidden',
-     ...theme.shadows.medium,
-  },
-  rankBackground: { padding: 25 },
-  rankTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-  rankLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 5 },
-  rankName: { color: theme.colors.white, fontSize: 32, fontWeight: '900', letterSpacing: -1 },
-  rankIconContainer: {
-     width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.1)',
-     justifyContent: 'center', alignItems: 'center',
-     borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)'
-  },
-  rankProgressInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  rankNext: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600' },
-  progressBarTrack: { height: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 4, overflow: 'hidden' },
-  progressBarFill: { height: '100%', borderRadius: 4 },
-  tooltip: {
-     position: 'absolute', top: -35, backgroundColor: theme.colors.text, 
-     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
-     zIndex: 10,
-  },
-  tooltipText: { color: theme.colors.white, fontSize: 12, fontWeight: '700' },
+  verticalDivider: { width: 1.5, height: '60%', backgroundColor: 'rgba(15, 23, 42, 0.08)' },
+  statValue: { fontSize: 26, fontWeight: '950', color: theme.colors.text, letterSpacing: -1 },
+  statLabel: { fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary, marginTop: 4 },
   sectionHeader: { marginBottom: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: theme.colors.text },
-  sectionSubtitle: { fontSize: 13, color: theme.colors.textSecondary, marginTop: 4 },
-  chartCard: {
+  sectionTitle: { fontSize: 20, fontWeight: '900', color: theme.colors.text, letterSpacing: -0.5 },
+  sectionSubtitle: { fontSize: 13, color: theme.colors.textSecondary, marginTop: 4, fontWeight: '500' },
+  matrixCard: {
      backgroundColor: theme.colors.white,
-     borderRadius: 24,
-     padding: 24,
-     marginBottom: 30,
-     ...theme.shadows.soft,
-     borderWidth: 1,
-     borderColor: theme.colors.border,
-  },
-  chartArea: {
-     flexDirection: 'row',
-     justifyContent: 'space-between',
-     alignItems: 'flex-end',
-     height: 160,
-  },
-  barWrapper: { alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
-  barTrack: {
-     width: 14,
-     height: 120,
-     backgroundColor: '#F1F5F9',
-     borderRadius: 7,
-     justifyContent: 'flex-end',
-     overflow: 'hidden',
-  },
-  barTotal: { width: '100%', backgroundColor: '#E2E8F0', position: 'absolute' },
-  barFill: { width: '100%', borderRadius: 7 },
-  dayLabel: { marginTop: 12, fontSize: 10, color: theme.colors.textSecondary, fontWeight: '700', textTransform: 'uppercase' },
-  todayLabel: { color: theme.colors.secondary },
-  insightBanner: {
-     flexDirection: 'row',
-     backgroundColor: '#FFFBEB',
+     borderRadius: 30,
      padding: 20,
-     borderRadius: 24,
-     borderWidth: 1,
-     borderColor: '#FEF3C7',
-     marginBottom: 30,
-     gap: 15,
+     marginBottom: 35,
+     borderWidth: 1.5,
+     borderColor: 'rgba(15, 23, 42, 0.05)',
+     ...theme.shadows.soft,
   },
-  insightIcon: {
-     width: 40,
-     height: 40,
-     borderRadius: 12,
-     backgroundColor: '#FEF3C7',
+  matrixHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    marginBottom: 15,
+  },
+  matrixDayLabel: {
+    width: (width - 130) / 7,
+    textAlign: 'center',
+    fontSize: 10,
+    fontWeight: '800',
+    color: theme.colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  gridContainer: {
+     flexDirection: 'row',
+     flexWrap: 'wrap',
+     gap: 8,
      justifyContent: 'center',
-     alignItems: 'center',
   },
-  insightContent: { flex: 1 },
-  insightHeader: { fontSize: 10, fontWeight: '900', color: '#B45309', letterSpacing: 0.5 },
-  insightText: { fontSize: 14, color: '#92400E', lineHeight: 20, marginTop: 4, fontWeight: '500' },
-  milestoneGrid: { flexDirection: 'row', gap: 12, marginTop: 15, marginBottom: 40 },
-  milestoneCard: {
-     flex: 1,
-     backgroundColor: theme.colors.white,
-     borderRadius: 20,
-     padding: 15,
-     alignItems: 'center',
+  gridCell: {
+     width: (width - 136) / 7,
+     height: (width - 136) / 7,
+     borderRadius: 6,
+     backgroundColor: '#F8FAFC',
      borderWidth: 1,
-     borderColor: theme.colors.border,
-     opacity: 0.5,
+     borderColor: 'rgba(15, 23, 42, 0.03)',
   },
-  activeMilestone: { opacity: 1, borderColor: theme.colors.secondary, backgroundColor: '#F0F9FF' },
-  milestoneIcon: { marginBottom: 8 },
-  milestoneName: { fontSize: 10, fontWeight: '800', color: theme.colors.text, textAlign: 'center' },
-  milestoneGoal: { fontSize: 9, fontWeight: '600', color: theme.colors.textSecondary, marginTop: 2 },
+  activeCell: {
+    borderColor: theme.colors.primary,
+    borderWidth: 2,
+    transform: [{ scale: 1.1 }],
+    zIndex: 100,
+  },
+  gridTooltip: {
+    position: 'absolute',
+    bottom: '140%',
+    left: '50%',
+    marginLeft: -45, // Half of width (90)
+    backgroundColor: '#0F172A',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    width: 90,
+    alignItems: 'center',
+    ...theme.shadows.deep,
+    zIndex: 1000,
+  },
+  tooltipPointer: {
+    position: 'absolute',
+    bottom: -6,
+    left: '50%',
+    marginLeft: -6,
+    width: 12,
+    height: 12,
+    backgroundColor: '#0F172A',
+    transform: [{ rotate: '45deg' }],
+  },
+  tooltipDate: { color: 'rgba(255,255,255,0.6)', fontSize: 9, fontWeight: '700' },
+  tooltipStats: { color: '#FFF', fontSize: 12, fontWeight: '900', marginTop: 2 },
+  gridLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 20,
+    gap: 6,
+  },
+  legendLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary, marginHorizontal: 4 },
+  legendBox: { width: 12, height: 12, borderRadius: 3 },
+  roadmapContainer: {
+    backgroundColor: theme.colors.white,
+    padding: 25,
+    borderRadius: 25,
+    borderWidth: 1.5,
+    borderColor: 'rgba(15, 23, 42, 0.05)',
+    ...theme.shadows.soft,
+  },
+  milestoneRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 20,
+    height: 75,
+  },
+  milestoneLeft: {
+    alignItems: 'center',
+    height: '100%',
+  },
+  milestoneIconOuter: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  roadmapLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 4,
+  },
+  milestoneContent: {
+    flex: 1,
+    paddingTop: 5,
+  },
+  milestoneText: { fontSize: 17, fontWeight: '800', color: theme.colors.text },
+  milestoneTarget: { fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary, marginTop: 4 },
+  achievedBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+  },
 });
 
 export default ProgressScreen;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Animated, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Animated, Image, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants';
@@ -82,9 +82,18 @@ const ProfileScreen = ({ navigation }) => {
             <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => {
+              Alert.alert(
+                "Help & Feedback",
+                "Need help or have feedback? Reach out to us at support@goalpilot.com or join our Discord community.",
+                [{ text: "OK" }]
+              );
+            }}
+          >
             <Ionicons name="help-circle-outline" size={22} color={theme.colors.text} />
-            <Text style={styles.menuText}>Support & Help</Text>
+            <Text style={styles.menuText}>Help & Feedback</Text>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
           </TouchableOpacity>
         </View>

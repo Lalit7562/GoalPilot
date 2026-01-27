@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 const STORAGE_KEY = '@goalpilot_state';
-const BASE_URL = Platform.OS === 'web' ? 'http://localhost:5001' : 'http://172.20.10.14:5001';
+const BASE_URL = Platform.OS === 'web' ? 'http://localhost:5002' : 'http://172.17.0.47:5002';
 const API_URL = `${BASE_URL}/api`;
 
 export const fetchTodayTasks = createAsyncThunk('goals/fetchTodayTasks', async (mood, { getState }) => {

@@ -240,9 +240,9 @@ router.get('/analytics/stats', async (req, res) => {
     const goalIds = userGoals.map(g => g._id);
     const tasks = await Task.find({ goalId: { $in: goalIds } }).sort({ date: -1 });
     
-    // 1. Calculate 7-day history
+    // 1. Calculate 28-day history
     const history = {};
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 28; i++) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
