@@ -1,14 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Alert, Keyboard, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, ScrollView, SafeAreaView, Modal } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  TouchableOpacity, 
+  ActivityIndicator, 
+  Alert, 
+  Keyboard, 
+  TouchableWithoutFeedback, 
+  KeyboardAvoidingView, 
+  Platform, 
+  ScrollView, 
+  SafeAreaView, 
+  Modal,
+  Animated,
+  Easing
+} from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { createGoalWithAI, fetchTodayTasks, fetchDashboardSummary, fetchStats } from '../redux/slices/goalSlice';
 import { theme } from '../constants';
 import { getMoodTheme } from '../utils/theme';
 
 const GoalSetupScreen = ({ navigation }) => {
+  const dispatch = useDispatch();
+  const { mood, isGenerating } = useSelector((state) => state.goals);
+  const currentTheme = getMoodTheme(mood);
+
   const [goal, setGoal] = useState('');
   const [goalType, setGoalType] = useState('Career');
   const [dailyTime, setDailyTime] = useState('1 hr');
@@ -19,7 +41,64 @@ const GoalSetupScreen = ({ navigation }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempDate, setTempDate] = useState(new Date());
   const [activeInput, setActiveInput] = useState(null);
-  
+
+  // HUD Animation States
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const scanAnim = useRef(new Animated.Value(0)).current;
+  const [hudMessage, setHudMessage] = useState('INITIALIZING_SESSION...');
+
+  useEffect(() => {
+    if (isGenerating) {
+      const messages = [
+        'ANALYZING_GOAL_COMPLEXITY...',
+        'CALCULATING_TRAJECTORY...',
+        'MAPPING_TACTICAL_CHECKPOINTS...',
+        'OPTIMIZING_REST_CYCLES...',
+        'DETERMINING_STRATEGIC_DEPTH...',
+        'FINALIZING_FLIGHT_PATH...'
+      ];
+      let i = 0;
+      const interval = setInterval(() => {
+        setHudMessage(messages[i % messages.length]);
+        i++;
+      }, 1500);
+
+      const rotateLoop = Animated.loop(
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 3000,
+          easing: Easing.linear,
+          useNativeDriver: true
+        })
+      );
+      rotateLoop.start();
+
+      const scanSequence = Animated.loop(
+        Animated.sequence([
+          Animated.timing(scanAnim, { toValue: 1, duration: 2000, easing: Easing.linear, useNativeDriver: true }),
+          Animated.timing(scanAnim, { toValue: 0, duration: 2000, easing: Easing.linear, useNativeDriver: true })
+        ])
+      );
+      scanSequence.start();
+
+      return () => {
+        clearInterval(interval);
+        rotateLoop.stop();
+        scanSequence.stop();
+      };
+    }
+  }, [isGenerating]);
+
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg']
+  });
+
+  const scanPos = scanAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-50, 50]
+  });
+
   const handleDateChange = (event, selectedDate) => {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
@@ -41,18 +120,15 @@ const GoalSetupScreen = ({ navigation }) => {
     const [y, m, d] = dateString.split('-');
     return `${d}/${m}/${y}`;
   };
-  
-  const { loading, isGenerating, mood } = useSelector((state) => state.goals);
-  const dispatch = useDispatch();
-  
-  const currentTheme = getMoodTheme(mood);
 
   const handleGenerate = async () => {
     if (!goal.trim() || !targetDate.trim()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Error", "Please fill in all fields!");
       return;
     }
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     Keyboard.dismiss();
 
     try {
@@ -68,17 +144,15 @@ const GoalSetupScreen = ({ navigation }) => {
         skillLevel
       })).unwrap();
       
-      // Refresh stats and dashboard data immediately
-      await Promise.all([
-        dispatch(fetchTodayTasks(mood)),
-        dispatch(fetchDashboardSummary()),
-        dispatch(fetchStats())
-      ]);
-
-      // Auto-redirect on success
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.navigate('MainTabs', { screen: 'Home' });
       
+      dispatch(fetchTodayTasks(mood));
+      dispatch(fetchDashboardSummary());
+      dispatch(fetchStats());
+      
     } catch (error) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Error", `Failed to generate: ${error.message}`);
     }
   };
@@ -108,7 +182,13 @@ const GoalSetupScreen = ({ navigation }) => {
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
               <View style={styles.innerContainer}>
                 <View style={styles.header}>
-                  <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                  <TouchableOpacity 
+                    onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        navigation.goBack();
+                    }} 
+                    style={styles.backButton}
+                  >
                     <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
                   </TouchableOpacity>
                   <Text style={styles.headerTitle}>New Goal</Text>
@@ -139,7 +219,9 @@ const GoalSetupScreen = ({ navigation }) => {
                       placeholderTextColor={theme.colors.textSecondary}
                       value={goal}
                       onChangeText={setGoal}
-                      onFocus={() => setActiveInput('goal')}
+                      onFocus={() => {
+                          setActiveInput('goal');
+                      }}
                       onBlur={() => setActiveInput(null)}
                     />
                   </View>
@@ -149,6 +231,7 @@ const GoalSetupScreen = ({ navigation }) => {
                   <Text style={styles.label}>Target Deadline</Text>
                   <TouchableOpacity 
                     onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       setActiveInput('date');
                       if (targetDate) setTempDate(new Date(targetDate));
                       setShowDatePicker(true);
@@ -188,11 +271,17 @@ const GoalSetupScreen = ({ navigation }) => {
                     <View style={styles.iosModalOverlay}>
                       <View style={styles.iosDatePickerContainer}>
                         <View style={styles.iosHeader}>
-                          <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                          <TouchableOpacity onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              setShowDatePicker(false);
+                          }}>
                             <Text style={styles.iosCancelText}>Cancel</Text>
                           </TouchableOpacity>
                           <Text style={styles.iosHeaderText}>Select Deadline</Text>
-                          <TouchableOpacity onPress={confirmIosDate}>
+                          <TouchableOpacity onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                              confirmIosDate();
+                          }}>
                             <Text style={[styles.iosDoneText, { color: currentTheme.primary }]}>Done</Text>
                           </TouchableOpacity>
                         </View>
@@ -217,7 +306,10 @@ const GoalSetupScreen = ({ navigation }) => {
                       <TouchableOpacity 
                         key={t.label} 
                         style={[styles.typeButton, goalType === t.label ? { backgroundColor: currentTheme.primary, borderColor: currentTheme.primary } : { borderColor: theme.colors.border }]}
-                        onPress={() => setGoalType(t.label)}
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setGoalType(t.label);
+                        }}
                       >
                         <Ionicons name={t.icon} size={20} color={goalType === t.label ? theme.colors.white : theme.colors.textSecondary} />
                         <Text style={[styles.typeText, goalType === t.label && styles.activeTypeText]}>{t.label}</Text>
@@ -237,7 +329,10 @@ const GoalSetupScreen = ({ navigation }) => {
                             styles.smallChip, 
                             dailyTime === t && { backgroundColor: currentTheme.secondary, borderColor: currentTheme.secondary }
                           ]}
-                          onPress={() => setDailyTime(t)}
+                          onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              setDailyTime(t);
+                          }}
                         >
                           <Text style={[styles.smallChipText, dailyTime === t && styles.activeSmallChipText]}>{t}</Text>
                         </TouchableOpacity>
@@ -280,7 +375,10 @@ const GoalSetupScreen = ({ navigation }) => {
                       <TouchableOpacity 
                         key={l} 
                         style={[styles.chip, skillLevel === l && { backgroundColor: currentTheme.primary, borderColor: currentTheme.primary }]}
-                        onPress={() => setSkillLevel(l)}
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setSkillLevel(l);
+                        }}
                       >
                         <Text style={[styles.chipText, skillLevel === l && styles.activeChipText]}>{l}</Text>
                       </TouchableOpacity>
@@ -309,7 +407,10 @@ const GoalSetupScreen = ({ navigation }) => {
 
                 <TouchableOpacity 
                   style={styles.skipButton}
-                  onPress={() => navigation.navigate('MainTabs')}
+                  onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      navigation.navigate('MainTabs');
+                  }}
                 >
                   <Text style={styles.skipText}>Configure later in Dashboard</Text>
                 </TouchableOpacity>
@@ -318,16 +419,30 @@ const GoalSetupScreen = ({ navigation }) => {
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* Immersive Loading Overlay */}
-        <Modal visible={loading || isGenerating} transparent animationType="fade">
+        {/* Immersive HUD Loading Overlay */}
+        <Modal visible={isGenerating} transparent animationType="fade">
           <LinearGradient
-            colors={[currentTheme.darkStart, currentTheme.primary]}
+            colors={['#0F172A', '#1E293B']}
             style={styles.loadingOverlay}
           >
-             <View style={styles.loadingContent}>
-                <ActivityIndicator size="large" color={theme.colors.white} style={{ transform: [{ scale: 1.5 }] }} />
-                <Text style={styles.loadingTitle}>Preparing Your Flight Plan...</Text>
-                <Text style={styles.loadingSubtitle}>AI is analyzing your mission parameters</Text>
+             <View style={styles.hudOverlayContainer}>
+                <View style={styles.hudRingContainer}>
+                   <Animated.View style={[styles.hudRing, { borderColor: currentTheme.primary, transform: [{ rotate: spin }] }]} />
+                   <Animated.View style={[styles.hudRingInner, { borderColor: currentTheme.secondary, transform: [{ rotate: spin }] }]} />
+                   <Animated.View style={[styles.hudScannerLine, { backgroundColor: currentTheme.primary, transform: [{ translateY: scanPos }] }]} />
+                   <Ionicons name="cog" size={50} color={currentTheme.secondary} style={{ opacity: 0.5 }} />
+                </View>
+                
+                <View style={styles.hudTextContainer}>
+                   <Text style={styles.hudVersion}>GOAL_ENGINE_v4.2</Text>
+                   <Text style={[styles.loadingTitle, { color: currentTheme.primary }]}>COMMAND_MISSION_GEN</Text>
+                   <View style={styles.hudLogContainer}>
+                      <Text style={styles.hudLogText}>{`> STATUS: ${hudMessage}`}</Text>
+                      <Text style={styles.hudLogText} numberOfLines={1} ellipsizeMode="tail">{`> TARGET: ${goal.toUpperCase()}`}</Text>
+                      <Text style={styles.hudLogText}>{`> SOURCE: GEMINI_ULTRA_CORE`}</Text>
+                   </View>
+                   <ActivityIndicator size="small" color={currentTheme.secondary} style={{ marginTop: 20 }} />
+                </View>
              </View>
           </LinearGradient>
         </Modal>
@@ -480,7 +595,7 @@ const styles = StyleSheet.create({
     gap: 12,
     ...theme.shadows.medium,
   },
-  mainButtonText: { color: theme.colors.white, fontSize: 18, fontWeight: '800' },
+  mainButtonText: { color: theme.colors.white, fontSize: 18, fontWeight: '700' },
   buttonDisabled: { backgroundColor: '#CBD5E1', opacity: 1, elevation: 0, shadowOpacity: 0 },
   customTimeContainer: {
     marginTop: 15,
@@ -518,29 +633,82 @@ const styles = StyleSheet.create({
   skipText: { color: theme.colors.textSecondary, fontSize: 14, fontWeight: '600' },
   loadingOverlay: {
     flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  hudOverlayContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%',
-    height: '100%'
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
   },
-  loadingContent: {
+  hudRingContainer: {
+    width: 200,
+    height: 200,
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 30,
+    marginBottom: 40,
+  },
+  hudRing: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    opacity: 0.3,
+  },
+  hudRingInner: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    opacity: 0.5,
+  },
+  hudScannerLine: {
+    position: 'absolute',
+    width: 180,
+    height: 2,
+    opacity: 0.6,
+    shadowColor: '#FFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+  },
+  hudTextContainer: {
+    alignItems: 'center',
+  },
+  hudVersion: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    letterSpacing: 2,
+    marginBottom: 5,
   },
   loadingTitle: {
-    color: theme.colors.white,
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 25,
-    marginBottom: 10,
+    fontSize: 20,
+    fontWeight: '900',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    letterSpacing: 1,
+    marginBottom: 20,
     textAlign: 'center',
-    letterSpacing: -0.5
   },
-  loadingSubtitle: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 16,
-    fontWeight: '500',
-    textAlign: 'center'
+  hudLogContainer: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    width: 300,
+  },
+  hudLogText: {
+    color: '#38BDF8',
+    fontSize: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    lineHeight: 16,
+    opacity: 0.8,
   },
   iosModalOverlay: {
     flex: 1,

@@ -10,15 +10,18 @@ Notifications.setNotificationHandler({
 });
 
 // Helper to fetch smart content
-const fetchSmartNotification = async () => {
+const fetchSmartNotification = async (token) => {
   try {
-    const response = await fetch('http://172.20.10.14:5001/api/notifications/generate', {
+    // Current server IP and Port (5002)
+    const response = await fetch('http://172.20.10.14:5002/api/notifications/generate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({
-        userName: "GoalPilot User", // Could come from profile
+        userName: "Pilot", 
         timeOfDay: new Date().getHours() < 12 ? 'morning' : 'evening',
-        mood: 'Neutral' // Could come from Redux if accessible here contextually
       })
     });
     return await response.json();
@@ -38,15 +41,13 @@ export const requestNotificationPermissions = async () => {
   return finalStatus === 'granted';
 };
 
-export const scheduleDailyReminder = async () => {
+export const scheduleDailyReminder = async (token) => {
   const hasPermission = await requestNotificationPermissions();
-  if (!hasPermission) return;
+  if (!hasPermission || !token) return;
 
   await Notifications.cancelAllScheduledNotificationsAsync();
 
-  // Fetch content for tomorrow's notification (simulated for now as static fetch)
-  // In a real app, you might use a background task or push notification
-  const content = await fetchSmartNotification();
+  const content = await fetchSmartNotification(token);
   
   const title = content?.title || "GoalPilot Check-in! 🚀";
   const body = content?.message || "Your daily goals are waiting. Let's make progress!";

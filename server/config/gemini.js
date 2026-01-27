@@ -4,7 +4,8 @@ require('dotenv').config();
 // Manage multiple API Keys
 const apiKeys = [
   process.env.GEMINI_API_KEY,
-  process.env.GEMINI_API_KEY_2
+  process.env.GEMINI_API_KEY_2,
+  process.env.GEMINI_API_KEY_3
 ].filter(key => key && key.trim().length > 0);
 
 let currentKeyIndex = 0;
@@ -174,9 +175,30 @@ const generateSmartNotification = async (context) => {
   
   return await callWithRotation(async (model) => {
     const prompt = `
-      Generate ONE short mission notification. Tone: Friendly, Hinglish, Not robotic.
-      User: ${userName}, Goal: ${goalTitle}, Day: ${currentDay}, Mood: ${mood}
-      Return JSON: { "title": "str", "message": "str", "cta": "str" }
+      You are the "GoalPilot Mission Commander". Your job is to send a daily morning briefing notification.
+      Tone: Supportve, Direct, Friendly, Hinglish (blend of Hindi and English).
+      Persona: A mentor who cares deeply but pushes you to be your best. Avoid robotic or generic text.
+      
+      User Information:
+      - Name: ${userName || 'Pilot'}
+      - Active Goal: ${goalTitle}
+      - Current Progress: Day ${currentDay}/${totalDays}
+      - Recent Status: ${todayStatus === 'completed' ? 'Tasks already done!' : 'Awaiting takeoff'}
+      - Yesterday: ${yesterdayStatus === 'completed' ? 'Great performance yesterday!' : 'Missed target yesterday - needs recovery'}
+      - Weekly Rate: ${weeklyRate}%
+      
+      Psychological Triggers to use (choose one randomly):
+      1. Curiosity: "Commander, aapke aaj ke roadmap me ek surprise task hai..."
+      2. Loss Aversion: "Aapka ${currentStreak} day streak khatam ho raha hai, Pilot!"
+      3. Enthusiasm: "Energy levels high! Aaj ${goalTitle} ko finish line ke paas le jaate hain."
+      4. Support: "Pilot, agar mushkil lag raha hai toh switch to 'Small Wins' mode today."
+
+      Return JSON:
+      {
+        "title": "Exciting short title (not more than 30 chars)",
+        "message": "Motivational Hinglish message (100 chars max)",
+        "cta": "Take Action / Launch Cockpit"
+      }
     `;
 
     const result = await model.generateContent(prompt);

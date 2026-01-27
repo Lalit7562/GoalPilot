@@ -3,7 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 const STORAGE_KEY = '@goalpilot_state';
-const BASE_URL = Platform.OS === 'web' ? 'http://localhost:5002' : 'http://172.17.0.47:5002';
+const BASE_URL = 'https://goalpilot-production-d58e.up.railway.app';
+// const BASE_URL = 'http://172.20.10.14:5002';
 const API_URL = `${BASE_URL}/api`;
 
 export const fetchTodayTasks = createAsyncThunk('goals/fetchTodayTasks', async (mood, { getState }) => {
@@ -174,6 +175,9 @@ const taskSlice = createSlice({
           state.token = action.payload.token || null;
           state.isAuthenticated = !!action.payload.token;
           state.dashboardSummary = action.payload.dashboardSummary || null;
+          state.coachMessage = action.payload.coachMessage || "";
+          state.dailyFocus = action.payload.dailyFocus || "";
+          state.microHabit = action.payload.microHabit || "";
         }
       })
       .addCase(googleLogin.fulfilled, (state, action) => {
@@ -211,6 +215,7 @@ const taskSlice = createSlice({
       .addCase(fetchAllGoals.fulfilled, (state, action) => {
         state.loading = false;
         state.goalsList = action.payload;
+        saveStateToStorage(state);
       })
       .addCase(fetchGoalDetails.pending, (state) => {
         state.loading = true;
@@ -254,7 +259,7 @@ const taskSlice = createSlice({
         state.isGenerating = false;
         // Added defensive checks for spreads
         const newTasks = action.payload?.tasks || [];
-        state.tasks = [...(state.tasks || []), ...newTasks];
+        state.tasks = newTasks;
         state.progress = calculateProgress(state.tasks);
         state.goalsList = [action.payload?.goal, ...(state.goalsList || [])].filter(Boolean);
         saveStateToStorage(state);

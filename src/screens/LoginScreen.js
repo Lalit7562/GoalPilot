@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AuthSession from 'expo-auth-session';
+import * as Haptics from 'expo-haptics';
 import { theme } from '../constants';
 import { fetchAllGoals, googleLogin, requestOtp, verifyOtp } from '../redux/slices/goalSlice';
 
@@ -109,6 +110,13 @@ const LoginScreen = ({ navigation }) => {
       setTimeout(() => otpInputRef.current?.focus(), 400);
     }
   }, [loginMethod]);
+
+  // Auto-trigger OTP verification
+  useEffect(() => {
+    if (otp.length === 6 && loginMethod === 'otp') {
+      handleOtpVerify();
+    }
+  }, [otp]);
 
   // Auth Handlers
   const redirectUri = AuthSession.makeRedirectUri({ useProxy: true });
@@ -206,7 +214,10 @@ const LoginScreen = ({ navigation }) => {
 
               {loginMethod === 'google' ? (
                 <View style={styles.methodContainer}>
-                  <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin} disabled={loading}>
+                  <TouchableOpacity style={styles.googleButton} onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    handleGoogleLogin();
+                  }} disabled={loading}>
                     {loading ? <ActivityIndicator color={theme.colors.text} /> : (
                       <View style={styles.buttonInner}>
                         <Ionicons name="logo-google" size={24} color={theme.colors.text} />
@@ -217,7 +228,10 @@ const LoginScreen = ({ navigation }) => {
 
                   <TouchableOpacity 
                     style={[styles.googleButton, styles.primaryButton]} 
-                    onPress={() => setLoginMethod('phone')}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setLoginMethod('phone');
+                    }}
                   >
                     <View style={styles.buttonInner}>
                       <Ionicons name="phone-portrait-outline" size={24} color="#FFF" />

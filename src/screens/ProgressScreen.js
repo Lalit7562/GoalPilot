@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Dimensions, SafeAreaView, RefreshControl, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Dimensions, SafeAreaView, RefreshControl, TouchableOpacity, Animated } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { fetchStats } from '../redux/slices/goalSlice';
 import { theme } from '../constants';
 import { getRankInfo } from '../utils/stats';
@@ -13,11 +14,19 @@ const ProgressScreen = () => {
   const dispatch = useDispatch();
   const { stats, loading, refreshing } = useSelector((state) => state.goals);
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
   useEffect(() => {
     dispatch(fetchStats());
+    Animated.parallel([
+       Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+       Animated.spring(slideAnim, { toValue: 0, tension: 20, friction: 7, useNativeDriver: true })
+    ]).start();
   }, [dispatch]);
 
   const onRefresh = React.useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     dispatch(fetchStats());
   }, [dispatch]);
 
@@ -26,10 +35,8 @@ const ProgressScreen = () => {
   const rank = getRankInfo(stats?.totalCompleted || 0);
   const progressToNext = Math.min((stats?.totalCompleted || 0) / rank.target, 1);
 
-  // Generate 28-day tactical grid data
   const matrixData = React.useMemo(() => {
     const historicalData = stats?.history || [];
-    // Ensure we have 28 slots, padding with empty days if needed
     const paddedData = [...Array(28)].map((_, i) => {
       const dataIndex = historicalData.length - 1 - i;
       return dataIndex >= 0 ? historicalData[dataIndex] : null;
@@ -49,7 +56,7 @@ const ProgressScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
          <Text style={styles.headerTitle}>Pilot Command</Text>
-         <TouchableOpacity style={styles.infoButton}>
+         <TouchableOpacity style={styles.infoButton} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
             <Ionicons name="analytics" size={24} color={theme.colors.primary} />
          </TouchableOpacity>
       </View>
@@ -63,7 +70,7 @@ const ProgressScreen = () => {
         }
       >
         {/* Elite Rank Module */}
-        <View style={styles.rankCard}>
+        <Animated.View style={[styles.rankCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
            <LinearGradient colors={['#0F172A', '#1E293B']} style={styles.rankBackground} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
               <View style={styles.rankTop}>
                  <View>
@@ -90,10 +97,10 @@ const ProgressScreen = () => {
                  </View>
               </View>
            </LinearGradient>
-        </View>
+        </Animated.View>
 
         {/* Primary Stats Panel */}
-        <View style={styles.topStats}>
+        <Animated.View style={[styles.topStats, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
            <View style={styles.statBox}>
               <Ionicons name="flame" size={20} color="#F59E0B" style={{ marginBottom: 4 }} />
               <Text style={styles.statValue}>{stats?.streak || 0}</Text>
@@ -111,96 +118,103 @@ const ProgressScreen = () => {
               <Text style={styles.statValue}>{Math.round(stats?.completionRate || 0)}%</Text>
               <Text style={styles.statLabel}>Success Rate</Text>
            </View>
-        </View>
+        </Animated.View>
 
         {/* Tactical Consistency Matrix */}
-        <View style={styles.sectionHeader}>
-           <Text style={styles.sectionTitle}>Consistency Matrix</Text>
-           <Text style={styles.sectionSubtitle}>Last 28-day mission performance</Text>
-        </View>
+        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+           <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Consistency Matrix</Text>
+              <Text style={styles.sectionSubtitle}>Last 28-day mission performance</Text>
+           </View>
 
-        <View style={styles.matrixCard}>
-          <View style={styles.matrixHeader}>
-            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-              <Text key={i} style={styles.matrixDayLabel}>{day}</Text>
-            ))}
-          </View>
-          <View style={styles.gridContainer}>
-            {matrixData.map((day, index) => {
-              const intensity = day ? (day.total > 0 ? day.completed / day.total : 0) : 0;
-              const dateLabel = day ? new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No Data';
-              
-              return (
-                <TouchableOpacity 
-                  key={index}
-                  onPress={() => setActiveCell(activeCell === index ? null : index)}
-                  style={[
-                    styles.gridCell,
-                    day && { 
-                      backgroundColor: intensity > 0.8 ? '#0EA5E9' : 
-                                     intensity > 0.5 ? '#38BDF8A0' : 
-                                     intensity > 0 ? '#38BDF840' : '#F1F5F9' 
-                    },
-                    activeCell === index && styles.activeCell
-                  ]}
-                >
-                  {activeCell === index && (
-                    <View style={styles.gridTooltip}>
-                      <View style={styles.tooltipPointer} />
-                      <Text style={styles.tooltipDate}>{dateLabel}</Text>
-                      <Text style={styles.tooltipStats}>{day ? `${day.completed}/${day.total}` : '0/0'}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          <View style={styles.gridLegend}>
-            <Text style={styles.legendLabel}>Dormant</Text>
-            <View style={[styles.legendBox, { backgroundColor: '#F1F5F9' }]} />
-            <View style={[styles.legendBox, { backgroundColor: '#38BDF840' }]} />
-            <View style={[styles.legendBox, { backgroundColor: '#38BDF8A0' }]} />
-            <View style={[styles.legendBox, { backgroundColor: '#0EA5E9' }]} />
-            <Text style={styles.legendLabel}>Peak</Text>
-          </View>
-        </View>
+           <View style={styles.matrixCard}>
+             <View style={styles.matrixHeader}>
+               {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                 <Text key={i} style={styles.matrixDayLabel}>{day}</Text>
+               ))}
+             </View>
+             <View style={styles.gridContainer}>
+               {matrixData.map((day, index) => {
+                 const intensity = day ? (day.total > 0 ? day.completed / day.total : 0) : 0;
+                 const dateLabel = day ? new Date(day.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No Data';
+                 
+                 return (
+                   <TouchableOpacity 
+                     key={index}
+                     onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setActiveCell(activeCell === index ? null : index);
+                     }}
+                     style={[
+                       styles.gridCell,
+                       day && { 
+                         backgroundColor: intensity > 0.8 ? '#0EA5E9' : 
+                                        intensity > 0.5 ? '#38BDF8A0' : 
+                                        intensity > 0 ? '#38BDF840' : '#F1F5F9' 
+                       },
+                       activeCell === index && styles.activeCell
+                     ]}
+                   >
+                     {activeCell === index && (
+                       <View style={styles.gridTooltip}>
+                         <View style={styles.tooltipPointer} />
+                         <Text style={styles.tooltipDate}>{dateLabel}</Text>
+                         <Text style={styles.tooltipStats}>{day ? `${day.completed}/${day.total}` : '0/0'}</Text>
+                       </View>
+                     )}
+                   </TouchableOpacity>
+                 );
+               })}
+             </View>
+             <View style={styles.gridLegend}>
+               <Text style={styles.legendLabel}>Dormant</Text>
+               <View style={[styles.legendBox, { backgroundColor: '#F1F5F9' }]} />
+               <View style={[styles.legendBox, { backgroundColor: '#38BDF840' }]} />
+               <View style={[styles.legendBox, { backgroundColor: '#38BDF8A0' }]} />
+               <View style={[styles.legendBox, { backgroundColor: '#0EA5E9' }]} />
+               <Text style={styles.legendLabel}>Peak</Text>
+             </View>
+           </View>
+        </Animated.View>
 
         {/* Dynamic Milestones Roadmap */}
-        <View style={styles.sectionHeader}>
-           <Text style={styles.sectionTitle}>Mission Milestones</Text>
-           <Text style={styles.sectionSubtitle}>Your progression towards legend status</Text>
-        </View>
+        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+           <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Mission Milestones</Text>
+              <Text style={styles.sectionSubtitle}>Your progression towards legend status</Text>
+           </View>
 
-        <View style={styles.roadmapContainer}>
-          {milestones.map((m, index) => (
-            <View key={m.id} style={styles.milestoneRow}>
-              <View style={styles.milestoneLeft}>
-                <View style={[
-                  styles.milestoneIconOuter,
-                  m.achieved && { backgroundColor: theme.colors.primary + '15', borderColor: theme.colors.primary }
-                ]}>
-                  <Ionicons 
-                    name={m.achieved ? m.icon : 'lock-closed'} 
-                    size={22} 
-                    color={m.achieved ? theme.colors.primary : '#94A3B8'} 
-                  />
-                </View>
-                {index < milestones.length - 1 && (
-                  <View style={[styles.roadmapLine, m.achieved && milestones[index+1].achieved && { backgroundColor: theme.colors.primary }]} />
-                )}
-              </View>
-              <View style={styles.milestoneContent}>
-                <Text style={[styles.milestoneText, !m.achieved && { color: '#94A3B8' }]}>{m.name}</Text>
-                <Text style={styles.milestoneTarget}>{m.goal} {m.id === 2 ? 'Day Streak' : m.id === 3 ? 'AI Missions' : 'Tasks'}</Text>
-              </View>
-              {m.achieved && (
-                <View style={styles.achievedBadge}>
-                  <Ionicons name="checkmark" size={12} color="#FFF" />
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
+           <View style={styles.roadmapContainer}>
+             {milestones.map((m, index) => (
+               <View key={m.id} style={styles.milestoneRow}>
+                 <View style={styles.milestoneLeft}>
+                   <View style={[
+                     styles.milestoneIconOuter,
+                     m.achieved && { backgroundColor: theme.colors.primary + '15', borderColor: theme.colors.primary }
+                   ]}>
+                     <Ionicons 
+                       name={m.achieved ? m.icon : 'lock-closed'} 
+                       size={22} 
+                       color={m.achieved ? theme.colors.primary : '#94A3B8'} 
+                     />
+                   </View>
+                   {index < milestones.length - 1 && (
+                     <View style={[styles.roadmapLine, m.achieved && milestones[index+1].achieved && { backgroundColor: theme.colors.primary }]} />
+                   )}
+                 </View>
+                 <View style={styles.milestoneContent}>
+                   <Text style={[styles.milestoneText, !m.achieved && { color: '#94A3B8' }]}>{m.name}</Text>
+                   <Text style={styles.milestoneTarget}>{m.goal} {m.id === 2 ? 'Day Streak' : m.id === 3 ? 'AI Missions' : 'Tasks'}</Text>
+                 </View>
+                 {m.achieved && (
+                   <View style={styles.achievedBadge}>
+                     <Ionicons name="checkmark" size={12} color="#FFF" />
+                   </View>
+                 )}
+               </View>
+             ))}
+           </View>
+        </Animated.View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -236,6 +250,7 @@ const styles = StyleSheet.create({
      justifyContent: 'center', alignItems: 'center',
      borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)'
   },
+  rankProgress: {},
   rankProgressInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   rankNext: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '700' },
   progressBarTrack: { height: 10, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 5, overflow: 'hidden' },
@@ -306,7 +321,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: '140%',
     left: '50%',
-    marginLeft: -45, // Half of width (90)
+    marginLeft: -45, 
     backgroundColor: '#0F172A',
     paddingVertical: 10,
     paddingHorizontal: 12,

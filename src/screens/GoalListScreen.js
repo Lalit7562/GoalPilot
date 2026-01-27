@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, 
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { fetchAllGoals } from '../redux/slices/goalSlice';
 import { theme } from '../constants';
 import { getMoodTheme } from '../utils/theme';
@@ -23,7 +24,10 @@ const GoalListScreen = ({ navigation }) => {
     return (
       <TouchableOpacity 
         style={[styles.goalCard, { borderColor: currentTheme.secondary, borderWidth: 1 }]}
-        onPress={() => navigation.navigate('GoalDetail', { goalId: item._id })}
+        onPress={() => {
+           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+           navigation.navigate('GoalDetail', { goalId: item._id });
+        }}
         activeOpacity={0.9}
       >
         <LinearGradient
