@@ -16,9 +16,7 @@ const AppContent = () => {
     // Initialize Notifications
     const initNotifications = async () => {
       const granted = await requestNotificationPermissions();
-      if (granted) {
-        await scheduleDailyReminder();
-      }
+      // scheduleDailyReminder will be called from slice or screen when token is available
     };
     initNotifications();
 

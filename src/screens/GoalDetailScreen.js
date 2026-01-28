@@ -23,11 +23,16 @@ const GoalDetailScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     dispatch(fetchGoalDetails(goalId));
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, tension: 20, friction: 8, useNativeDriver: true })
-    ]).start();
   }, [dispatch, goalId]);
+
+  useEffect(() => {
+    if (!loading && currentGoal) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.spring(slideAnim, { toValue: 0, tension: 20, friction: 8, useNativeDriver: true })
+      ]).start();
+    }
+  }, [loading, currentGoal, mood]);
 
   const onRefresh = React.useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -76,7 +81,6 @@ const GoalDetailScreen = ({ route, navigation }) => {
 
   return (
     <LinearGradient
-      key={mood} // Force full re-render when mood changes to catch all style updates
       colors={currentTheme.gradient}
       style={styles.mainGradient}
       start={{ x: 0, y: 0 }}
@@ -103,207 +107,206 @@ const GoalDetailScreen = ({ route, navigation }) => {
         >
           <Animated.View style={[styles.headerCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <LinearGradient
-              key={mood + "_mission_header"} 
-              colors={[currentTheme.primary, currentTheme.darkStart || '#0F172A']}
+              colors={['#1E293B', '#0F172A']}
               style={styles.headerCardGradient}
-              start={{ x: 0, y: 0 }}
+              start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 1 }}
             >
-            <View style={styles.typeBadge}>
-              <Ionicons 
-                name={currentGoal.goalType === 'Career' ? 'briefcase' : currentGoal.goalType === 'Fitness' ? 'fitness' : currentGoal.goalType === 'Personal' ? 'person' : 'book'} 
-                size={14} 
-                color={currentTheme.secondary} 
-              />
-              <Text style={[styles.typeBadgeText, { color: currentTheme.secondary }]}>{currentGoal.goalType}</Text>
-            </View>
-            <Text style={styles.title}>{currentGoal.title}</Text>
-            
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                 <Text style={styles.statVal}>{progress}%</Text>
-                 <Text style={styles.statLab}>Completed</Text>
+              <View style={styles.typeBadge}>
+                <Ionicons 
+                  name={currentGoal.goalType === 'Career' ? 'briefcase' : currentGoal.goalType === 'Fitness' ? 'fitness' : currentGoal.goalType === 'Personal' ? 'person' : 'book'} 
+                  size={14} 
+                  color={currentTheme.secondary} 
+                />
+                <Text style={[styles.typeBadgeText, { color: currentTheme.secondary }]}>{currentGoal.goalType}</Text>
               </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                 <Text style={styles.statVal}>{dayNum}/{currentGoal.totalDays}</Text>
-                 <Text style={styles.statLab}>Days In</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                 <Text style={styles.statVal}>{currentGoal.totalTasks}</Text>
-                 <Text style={styles.statLab}>Checkpoints</Text>
-              </View>
-            </View>
-
-            <View style={styles.progressContainer}>
-              <View style={styles.progressTrack}>
-                 <View style={[styles.progressThumb, { width: `${progress}%`, backgroundColor: currentTheme.secondary }]} />
-              </View>
-            </View>
-          </LinearGradient>
-        </Animated.View>
-
-        <View style={styles.sectionHeader}>
-           <Text style={styles.sectionTitle}>Active Phase</Text>
-           <View style={[styles.weekBadge, { backgroundColor: currentTheme.primary + '15' }]}>
-              <Text style={[styles.weekText, { color: currentTheme.primary }]}>
-                Week {currentPhase?.weeks?.[0] || '1'} - {currentPhase?.weeks?.[1] || '?'}
-              </Text>
-           </View>
-        </View>
-
-        <View style={[styles.phaseCard, { borderColor: currentTheme.secondary + '20', backgroundColor: 'rgba(255,255,255,0.95)' }]}>
-           <View style={[styles.phaseIcon, { backgroundColor: currentTheme.primary }]}>
-              <Ionicons name="navigate" size={24} color={theme.colors.white} />
-           </View>
-           <View style={styles.phaseInfo}>
-              <Text style={styles.phaseName}>{currentPhase?.phase || 'Plan Operational'}</Text>
-              <Text style={styles.phaseDescription}>{currentPhase?.focus || currentGoal.summary}</Text>
-           </View>
-        </View>
-
-        <View style={[styles.sopSection, { borderLeftColor: currentTheme.primary, borderLeftWidth: 4, backgroundColor: 'rgba(255,255,255,0.95)' }]}>
-          <View style={styles.sopHeader}>
-             <Ionicons name="bulb" size={20} color={currentTheme.secondary} />
-             <Text style={[styles.sopTitle, { color: currentTheme.darkStart }]}>Coach's Briefing</Text>
-          </View>
-          <Text style={styles.sopText}>{currentGoal.summary || currentGoal.sop}</Text>
-        </View>
-
-        <View style={styles.actions}>
-           <TouchableOpacity 
-             style={[styles.mainAction, { backgroundColor: currentTheme.secondary }]}
-             onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                navigation.navigate('MainTabs', { screen: 'Home' });
-             }}
-           >
-             <Text style={styles.mainActionText}>Resume Mission Today</Text>
-             <Ionicons name="play" size={18} color={theme.colors.white} />
-           </TouchableOpacity>
-
-           <TouchableOpacity 
-             style={[styles.secondaryAction, { borderColor: currentTheme.primary }]}
-             onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                setShowStrategy(true);
-             }}
-           >
-             <Ionicons name="map" size={20} color={currentTheme.primary} />
-             <Text style={[styles.secondaryActionText, { color: currentTheme.primary }]}>Open Full Flight Plan</Text>
-           </TouchableOpacity>
-        </View>
-
-        <Modal
-          visible={showStrategy}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowStrategy(false)}
-        >
-          {showStrategy && (
-            <View style={styles.modalContainer}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Full Strategic Roadmap</Text>
-                <TouchableOpacity onPress={() => setShowStrategy(false)} style={styles.modalClose}>
-                  <Ionicons name="close" size={24} color={currentTheme.primary} />
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.title}>{currentGoal.title}</Text>
               
-              <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-                <View style={styles.fullBriefing}>
-                   <Text style={[styles.briefingLabel, { color: currentTheme.primary }]}>OBJECTIVE STATEMENT</Text>
-                   <Text style={styles.fullSopText}>{currentGoal.sop || currentGoal.summary}</Text>
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                   <Text style={styles.statVal}>{progress}%</Text>
+                   <Text style={styles.statLab}>Completed</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                   <Text style={styles.statVal}>{dayNum}/{currentGoal.totalDays}</Text>
+                   <Text style={styles.statLab}>Days In</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                   <Text style={styles.statVal}>{currentGoal.totalTasks}</Text>
+                   <Text style={styles.statLab}>Checkpoints</Text>
+                </View>
+              </View>
+
+              <View style={styles.progressContainer}>
+                <View style={styles.progressTrack}>
+                   <View style={[styles.progressThumb, { width: `${progress}%`, backgroundColor: currentTheme.secondary }]} />
+                </View>
+              </View>
+            </LinearGradient>
+          </Animated.View>
+
+          <View style={styles.sectionHeader}>
+             <Text style={styles.sectionTitle}>Active Phase</Text>
+             <View style={[styles.weekBadge, { backgroundColor: currentTheme.primary + '15' }]}>
+                <Text style={[styles.weekText, { color: currentTheme.primary }]}>
+                  Week {currentPhase?.weeks?.[0] || '1'} - {currentPhase?.weeks?.[1] || '?'}
+                </Text>
+             </View>
+          </View>
+
+          <View style={[styles.phaseCard, { borderColor: currentTheme.secondary + '20', backgroundColor: 'rgba(255,255,255,0.95)' }]}>
+             <View style={[styles.phaseIcon, { backgroundColor: currentTheme.primary }]}>
+                <Ionicons name="navigate" size={24} color={theme.colors.white} />
+             </View>
+             <View style={styles.phaseInfo}>
+                <Text style={styles.phaseName}>{currentPhase?.phase || 'Plan Operational'}</Text>
+                <Text style={styles.phaseDescription}>{currentPhase?.focus || currentGoal.summary}</Text>
+             </View>
+          </View>
+
+          <View style={[styles.sopSection, { borderLeftColor: currentTheme.primary, borderLeftWidth: 4, backgroundColor: 'rgba(255,255,255,0.95)' }]}>
+            <View style={styles.sopHeader}>
+               <Ionicons name="bulb" size={20} color={currentTheme.secondary} />
+               <Text style={[styles.sopTitle, { color: currentTheme.darkStart }]}>Coach's Briefing</Text>
+            </View>
+            <Text style={styles.sopText}>{currentGoal.summary || currentGoal.sop}</Text>
+          </View>
+
+          <View style={styles.actions}>
+             <TouchableOpacity 
+               style={[styles.mainAction, { backgroundColor: currentTheme.secondary }]}
+               onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  navigation.navigate('MainTabs', { screen: 'Home' });
+               }}
+             >
+               <Text style={styles.mainActionText}>Resume Mission Today</Text>
+               <Ionicons name="play" size={18} color={theme.colors.white} />
+             </TouchableOpacity>
+
+             <TouchableOpacity 
+               style={[styles.secondaryAction, { borderColor: currentTheme.primary }]}
+               onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setShowStrategy(true);
+               }}
+             >
+               <Ionicons name="map" size={20} color={currentTheme.primary} />
+               <Text style={[styles.secondaryActionText, { color: currentTheme.primary }]}>Open Full Flight Plan</Text>
+             </TouchableOpacity>
+          </View>
+
+          <Modal
+            visible={showStrategy}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={() => setShowStrategy(false)}
+          >
+            {showStrategy && (
+              <View style={styles.modalContainer}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Full Strategic Roadmap</Text>
+                  <TouchableOpacity onPress={() => setShowStrategy(false)} style={styles.modalClose}>
+                    <Ionicons name="close" size={24} color={currentTheme.primary} />
+                  </TouchableOpacity>
                 </View>
                 
-                {currentGoal.fullPlan && currentGoal.fullPlan.length > 0 ? (
-                  <View style={{ marginTop: 30 }}>
-                    <Text style={styles.modalSectionTitle}>Complete Mission Timeline</Text>
-                    <Text style={styles.roadmapSubtitle}>Every single day of your journey, mapped by AI.</Text>
-                    
-                    {currentGoal.fullPlan.map((dayItem, index) => (
-                      <View key={index} style={styles.dayCard}>
-                        <View style={[styles.dayBadge, { backgroundColor: currentTheme.primary + '15' }]}>
-                          <Text style={[styles.dayBadgeText, { color: currentTheme.primary }]}>DAY {dayItem.day}</Text>
+                <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+                  <View style={styles.fullBriefing}>
+                     <Text style={[styles.briefingLabel, { color: currentTheme.primary }]}>OBJECTIVE STATEMENT</Text>
+                     <Text style={styles.fullSopText}>{currentGoal.sop || currentGoal.summary}</Text>
+                  </View>
+                  
+                  {currentGoal.fullPlan && currentGoal.fullPlan.length > 0 ? (
+                    <View style={{ marginTop: 30 }}>
+                      <Text style={styles.modalSectionTitle}>Complete Mission Timeline</Text>
+                      <Text style={styles.roadmapSubtitle}>Every single day of your journey, mapped by AI.</Text>
+                      
+                      {currentGoal.fullPlan.map((dayItem, index) => (
+                        <View key={index} style={styles.dayCard}>
+                          <View style={[styles.dayBadge, { backgroundColor: currentTheme.primary + '15' }]}>
+                            <Text style={[styles.dayBadgeText, { color: currentTheme.primary }]}>DAY {dayItem.day}</Text>
+                          </View>
+                          <View style={styles.dayContent}>
+                            <Text style={styles.dayTheme}>{dayItem.theme || 'Operation Progress'}</Text>
+                            <View style={styles.dayTasksList}>
+                              {dayItem.tasks?.map((t, tIdx) => (
+                                <View key={tIdx} style={styles.dayTaskRow}>
+                                  <Ionicons name="radio-button-on" size={12} color={currentTheme.secondary} />
+                                  <Text style={styles.dayTaskTitle}>{t.title}</Text>
+                                  {t.time && <Text style={styles.dayTaskTime}>{t.time}m</Text>}
+                                </View>
+                              ))}
+                            </View>
+                          </View>
                         </View>
-                        <View style={styles.dayContent}>
-                          <Text style={styles.dayTheme}>{dayItem.theme || 'Operation Progress'}</Text>
-                          <View style={styles.dayTasksList}>
-                            {dayItem.tasks?.map((t, tIdx) => (
-                              <View key={tIdx} style={styles.dayTaskRow}>
-                                <Ionicons name="radio-button-on" size={12} color={currentTheme.secondary} />
-                                <Text style={styles.dayTaskTitle}>{t.title}</Text>
-                                {t.time && <Text style={styles.dayTaskTime}>{t.time}m</Text>}
+                      ))}
+                    </View>
+                  ) : currentGoal.roadmap && currentGoal.roadmap.length > 0 ? (
+                    <View style={{ marginTop: 30 }}>
+                      <Text style={styles.modalSectionTitle}>Mission Landmarks</Text>
+                      {currentGoal.roadmap.map((item, index) => (
+                        <View key={index} style={styles.roadmapCard}>
+                          <View style={[styles.roadmapBadge, { backgroundColor: currentTheme.primary + '15' }]}>
+                            <Text style={[styles.roadmapBadgeText, { color: currentTheme.primary }]}>{item.label}</Text>
+                          </View>
+                          <Text style={styles.roadmapTitle}>{item.title}</Text>
+                          <View style={styles.pointsList}>
+                            {item.points?.map((point, pIndex) => (
+                              <View key={pIndex} style={styles.pointRow}>
+                                <View style={[styles.pointDot, { backgroundColor: currentTheme.secondary }]} />
+                                <Text style={styles.pointText}>{point}</Text>
                               </View>
                             ))}
                           </View>
                         </View>
-                      </View>
-                    ))}
-                  </View>
-                ) : currentGoal.roadmap && currentGoal.roadmap.length > 0 ? (
-                  <View style={{ marginTop: 30 }}>
-                    <Text style={styles.modalSectionTitle}>Mission Landmarks</Text>
-                    {currentGoal.roadmap.map((item, index) => (
-                      <View key={index} style={styles.roadmapCard}>
-                        <View style={[styles.roadmapBadge, { backgroundColor: currentTheme.primary + '15' }]}>
-                          <Text style={[styles.roadmapBadgeText, { color: currentTheme.primary }]}>{item.label}</Text>
-                        </View>
-                        <Text style={styles.roadmapTitle}>{item.title}</Text>
-                        <View style={styles.pointsList}>
-                          {item.points?.map((point, pIndex) => (
-                            <View key={pIndex} style={styles.pointRow}>
-                              <View style={[styles.pointDot, { backgroundColor: currentTheme.secondary }]} />
-                              <Text style={styles.pointText}>{point}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                ) : currentGoal.phases && (
-                  <View style={{ marginTop: 30 }}>
-                    <Text style={styles.modalSectionTitle}>Phased Approach</Text>
-                    {currentGoal.phases.map((p, i) => (
-                      <View key={i} style={styles.modalPhaseItem}>
-                        <View style={[styles.modalPhaseNum, { backgroundColor: currentTheme.primary + '15' }]}>
-                           <Text style={[styles.phaseNumText, { color: currentTheme.primary }]}>{i+1}</Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.modalPhaseTitle}>{p.phase}</Text>
-                          <Text style={[styles.modalPhaseMeta, { color: currentTheme.secondary }]}>
-                            Week {p.weeks?.[0] || '1'} - {p.weeks?.[1] || '?'}
-                          </Text>
-                          <Text style={styles.modalPhaseFocus}>{p.focus}</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                )}
-  
-                {currentGoal.rules && (
-                  <View style={[styles.recoveryCard, { backgroundColor: currentTheme.primary + '15', borderColor: currentTheme.secondary }]}>
-                    <View style={styles.recoveryHeader}>
-                       <Ionicons name="shield-checkmark" size={20} color={currentTheme.primary} />
-                       <Text style={[styles.recoveryTitle, { color: currentTheme.darkStart }]}>Operational Rules</Text>
+                      ))}
                     </View>
-                    <View style={styles.ruleRow}>
-                       <Text style={[styles.ruleLabel, { color: currentTheme.primary }]}>Buffer Days</Text>
-                       <Text style={[styles.ruleValue, { color: currentTheme.darkStart }]}>{currentGoal.rules.bufferDaysPerWeek} per week</Text>
+                  ) : currentGoal.phases && (
+                    <View style={{ marginTop: 30 }}>
+                      <Text style={styles.modalSectionTitle}>Phased Approach</Text>
+                      {currentGoal.phases.map((p, i) => (
+                        <View key={i} style={styles.modalPhaseItem}>
+                          <View style={[styles.modalPhaseNum, { backgroundColor: currentTheme.primary + '15' }]}>
+                             <Text style={[styles.phaseNumText, { color: currentTheme.primary }]}>{i+1}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.modalPhaseTitle}>{p.phase}</Text>
+                            <Text style={[styles.modalPhaseMeta, { color: currentTheme.secondary }]}>
+                              Week {p.weeks?.[0] || '1'} - {p.weeks?.[1] || '?'}
+                            </Text>
+                            <Text style={styles.modalPhaseFocus}>{p.focus}</Text>
+                          </View>
+                        </View>
+                      ))}
                     </View>
-                    <View style={styles.ruleRow}>
-                       <Text style={[styles.ruleLabel, { color: currentTheme.primary }]}>Daily Load</Text>
-                       <Text style={[styles.ruleValue, { color: currentTheme.darkStart }]}>Max {currentGoal.rules.maxTasksPerDay} checkpoints</Text>
+                  )}
+    
+                  {currentGoal.rules && (
+                    <View style={[styles.recoveryCard, { backgroundColor: currentTheme.primary + '15', borderColor: currentTheme.secondary }]}>
+                      <View style={styles.recoveryHeader}>
+                         <Ionicons name="shield-checkmark" size={20} color={currentTheme.primary} />
+                         <Text style={[styles.recoveryTitle, { color: currentTheme.darkStart }]}>Operational Rules</Text>
+                      </View>
+                      <View style={styles.ruleRow}>
+                         <Text style={[styles.ruleLabel, { color: currentTheme.primary }]}>Buffer Days</Text>
+                         <Text style={[styles.ruleValue, { color: currentTheme.darkStart }]}>{currentGoal.rules.bufferDaysPerWeek} per week</Text>
+                      </View>
+                      <View style={styles.ruleRow}>
+                         <Text style={[styles.ruleLabel, { color: currentTheme.primary }]}>Daily Load</Text>
+                         <Text style={[styles.ruleValue, { color: currentTheme.darkStart }]}>Max {currentGoal.rules.maxTasksPerDay} checkpoints</Text>
+                      </View>
+                      <Text style={[styles.recoveryNote, { color: currentTheme.darkStart }]}>Skip Protocol: {currentGoal.rules.skipLogic}</Text>
                     </View>
-                    <Text style={[styles.recoveryNote, { color: currentTheme.darkStart }]}>Skip Protocol: {currentGoal.rules.skipLogic}</Text>
-                  </View>
-                )}
-              </ScrollView>
-            </View>
-          )}
-        </Modal>
-      </ScrollView>
-    </SafeAreaView>
+                  )}
+                </ScrollView>
+              </View>
+            )}
+          </Modal>
+        </ScrollView>
+      </SafeAreaView>
     </LinearGradient>
   );
 };
@@ -336,8 +339,11 @@ const styles = StyleSheet.create({
   headerCard: {
     borderRadius: 30,
     marginBottom: 25,
+    backgroundColor: '#0F172A',
     ...theme.shadows.deep,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   headerCardGradient: {
     padding: 24,
@@ -345,13 +351,15 @@ const styles = StyleSheet.create({
   typeBadge: {
      flexDirection: 'row',
      alignItems: 'center',
-     backgroundColor: 'rgba(255,255,255,0.1)',
+     backgroundColor: 'rgba(255,255,255,0.06)',
      paddingVertical: 6,
-     paddingHorizontal: 12,
-     borderRadius: 12,
+     paddingHorizontal: 14,
+     borderRadius: 50,
      alignSelf: 'flex-start',
      gap: 6,
      marginBottom: 15,
+     borderWidth: 1,
+     borderColor: 'rgba(255,255,255,0.05)',
   },
   typeBadgeText: { fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   title: { fontSize: 26, fontWeight: '900', color: theme.colors.white, marginBottom: 25, letterSpacing: -0.5 },

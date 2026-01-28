@@ -16,6 +16,7 @@ import ProgressScreen from '../screens/ProgressScreen';
 import GoalListScreen from '../screens/GoalListScreen';
 import GoalDetailScreen from '../screens/GoalDetailScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import FocusTimerScreen from '../screens/FocusTimerScreen';
 import { theme } from '../constants';
 
 const Stack = createNativeStackNavigator();
@@ -220,6 +221,11 @@ const AppNavigator = () => {
             <Stack.Screen name="MainTabs" component={MainTabs} />
             <Stack.Screen name="GoalSetup" component={GoalSetupScreen} />
             <Stack.Screen name="GoalDetail" component={GoalDetailScreen} />
+            <Stack.Screen 
+              name="FocusTimer" 
+              component={FocusTimerScreen} 
+              options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} 
+            />
           </>
         )}
       </Stack.Navigator>

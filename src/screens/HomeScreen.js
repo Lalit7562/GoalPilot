@@ -233,7 +233,12 @@ const HomeScreen = ({ navigation }) => {
                   >
                     <TouchableOpacity 
                       style={[styles.taskCard, item.status === 'completed' && styles.taskCardDone]}
-                      onPress={() => item.status === 'pending' && handleStatusUpdate(item._id, 'completed')}
+                      onPress={() => {
+                        if (item.status === 'pending') {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          navigation.navigate('FocusTimer', { task: item });
+                        }
+                      }}
                       activeOpacity={0.7}
                     >
                       <View style={styles.taskCardContent}>
